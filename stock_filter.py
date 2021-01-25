@@ -1,5 +1,4 @@
 # stock filter by Ken Wu
-
 import requests as rq
 import pandas as pd
 import xlsxwriter
@@ -9,6 +8,7 @@ import shutil
 
 from bs4 import BeautifulSoup
 
+# Make the folder to save your reports
 path = './stock_filter_pdf_file'
 if os.path.isdir(path):
     shutil.rmtree('./stock_filter_pdf_file')
@@ -16,16 +16,14 @@ if os.path.isdir(path):
 else:
     os.mkdir('./stock_filter_pdf_file')
 
-holder = 1
-# 股東持股總數 : 1 = 400張, 2 = 1000張
-week = 4
-# 成長週數>=0~12
-before_week = 4
-# 與本週比較差異0~11
-growth_rate = 1
-# 成長率 : % <=-3, <=-2, <=-1, <=-0.01, >=0.1, >=1, >=2, >=3
-stock_price = 50
-# 股價<=20, 30, 40, 50 ,60 ,70, 80, 90, 100, 1000, 5000
+# Make user input the info
+holder = input("Please enter the number of stocks that the shareholders hold (1 = 4 lots, 2 = 10 lots): ")
+week = input("Please enter the growth week (>= 0~12 week): ")
+before_week = input("Compare with n weeks ago (0~11 week): ")
+growth_rate = input("Please enter the growth rate(%) <=-3, <=-2, <=-1, <=-0.01, >=0.1, >=1, >=2, >=3: ")
+stock_price = input("Please enter the current stock price <= 20, 30, 40, 50 ,60 ,70, 80, 90, 100, 1000, 5000: ")
+
+# crawler
 url = f'https://norway.twsthr.info/StockHoldersContinue.aspx?Show={holder}&continue=Y&weeks={week}&growthrate={growth_rate}&beforeweek={before_week}&price={stock_price}&valuerank=1-3000&display=0'
 res = rq.get(url)
 res.encoding = 'utf-8'
@@ -38,12 +36,12 @@ for row in rows:
         stock_list.append(rr.string) 
     info_list.append(stock_list[3:6])
 f_list = info_list[18:-1]
-# 初步依條件篩選，漏出股票
+
 s_list = []
 for final_stock in f_list:
     if '櫃' not in final_stock[1]:
         s_list.append(final_stock)
-# 篩去興櫃、上櫃股票
+
 stock_num_name = []
 stock_name = []
 stock_num = []
@@ -66,6 +64,7 @@ for fh in stock_num:
     h_url = f'https://norway.twsthr.info/StockHolders.aspx?STOCK={fh}'
     stock_holder_url.append(h_url)
 
+# to excel
 def data_to_df(stock_num, stock_name, category, percent, stock_focus_url):
     df = pd.DataFrame({'number': stock_num, 
                        'stock': stock_name, 
@@ -77,6 +76,7 @@ def data_to_df(stock_num, stock_name, category, percent, stock_focus_url):
     # print(df)
     df.to_excel('main_report.xlsx', engine='xlsxwriter', index=False) 
 
+# revenue reports
 def financial_report(stock_num):
     df_list = []
     # n = 0
@@ -141,14 +141,7 @@ def financial_report(stock_num):
         ff.savefig('./stock_filter_pdf_file/%s_%s_revenue.pdf' % (stock_num[re_name], stock_name[re_name]))
         re_name += 1
 
-    # writer = pd.ExcelWriter('./revenue_report.xlsx', engine='openpyxl') # pylint: disable=abstract-class-instantiated
-    # for data in df_list:
-    #     data.to_excel(writer, sheet_name=stock_num[n], index=False) 
-    #     # df.to_excel(write, sheet_name=num, engine='xlsxwriter', index=False) 
-    #     n += 1
-    #     writer.save()
-    # writer.close()
-
+# Merge to pdf file and make the bar graph/line graph
 def stock_holder_filter_to_pdf(stock_num, stock_name, stock_holder_url):
     file_name = 0
     for tri_url in stock_holder_url:
@@ -166,9 +159,9 @@ def stock_holder_filter_to_pdf(stock_num, stock_name, stock_holder_url):
                 holder_table.append(sin_row.string)
             table_list.append(holder_table)
         for elements in table_list[16:64]:
-            # [16:356]:三年
-            # [16:123]:一年
-            # [16:64]:半年
+            # [16:356]:three years
+            # [16:123]:one year
+            # [16:64]:half year
             if "\xa0" in elements:
                 date = elements[2].split("\xa0")[0]
                 date_list.append(date)
